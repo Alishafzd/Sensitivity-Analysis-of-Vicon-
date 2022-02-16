@@ -139,9 +139,3 @@ def vnac(initial_angles, angles):
     
     return corrected_angles
 
-
-
-x = 2
-
-
-
