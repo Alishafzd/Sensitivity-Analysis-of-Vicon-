@@ -10,8 +10,8 @@ import os
 import math
 
 # Import required files
-files_angles = [file for file in os.listdir() if file.endswith('.csv') and 'angles' in file]
-files_traj = [file for file in os.listdir() if file.endswith('.csv') and 'trajectories' in file]
+files_angles = [file for file in os.listdir('dataset') if file.endswith('.csv') and 'angles' in file]
+files_traj = [file for file in os.listdir('dataset') if file.endswith('.csv') and 'trajectories' in file]
 
 
 def scale_size(In, final_size):
@@ -39,7 +39,7 @@ def scale_size(In, final_size):
 for k in range(len(files_traj)):
     file_traj_id = files_traj[k]
 
-    with open(file_traj_id) as file_traj_id:
+    with open(f'dataset/{file_traj_id}') as file_traj_id:
         # Reading csv trajectories file and making its dataframe
         trajs = pd.read_csv(file_traj_id, header=2)
 
@@ -95,7 +95,7 @@ for k in range(len(files_traj)):
     # Selecting lower limb joint angles in the same gait trial using cycles obtained above
     file_angles_id = files_angles[k]
 
-    with open(file_angles_id) as file_angles_id:
+    with open(f'dataset/{file_angles_id}') as file_angles_id:
         # Reading joint angles csv file and making dataframe
         angles = pd.read_csv(file_angles_id, header=2)
 
