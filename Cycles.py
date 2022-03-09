@@ -144,7 +144,12 @@ for k in range(len(files_traj)):
                     joint_angles[f"{index[0]}"].append(scale_size(temp.to_numpy(), 101))
 
     # Getting average values of all cycles for every joint and saving the result in a csv file
-    joint_angles["KneeAngles"] = np.mean(joint_angles["KneeAngles"], axis=0)
+    joint_angles["KneeAngles_std"] = pd.DataFrame(np.std(joint_angles["KneeAngles"], axis=0))
+    joint_angles["AnkleAngles_std"] = pd.DataFrame(np.std(joint_angles["AnkleAngles"], axis=0))
+    joint_angles["HipAngles_std"] = pd.DataFrame(np.std(joint_angles["HipAngles"], axis=0))
+    joint_angles["PelvisAngles_std"] = pd.DataFrame(np.std(joint_angles["PelvisAngles"], axis=0))
+
+    joint_angles["KneeAngles"] = pd.DataFrame(np.mean(joint_angles["KneeAngles"], axis=0))
     joint_angles["AnkleAngles"] = pd.DataFrame(np.mean(joint_angles["AnkleAngles"], axis=0))
     joint_angles["HipAngles"] = pd.DataFrame(np.mean(joint_angles["HipAngles"], axis=0))
     joint_angles["PelvisAngles"] = pd.DataFrame(np.mean(joint_angles["PelvisAngles"], axis=0))

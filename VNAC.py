@@ -6,6 +6,7 @@ Vicon Nexus Angles Correction
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import os
 import math
 
@@ -234,7 +235,7 @@ def static_mean():
 
 def cycles_average(angles, cycles, name):
     """
-    Split cycles from the corrected angles dataset using cycles.csv file and then take the average of them.
+    Split cycles from the corrected angles dataset using cycles.csv file.
     This function should be applied on each trial.
 
     :param angles: corrected angles for the trial
@@ -251,35 +252,34 @@ def cycles_average(angles, cycles, name):
 
     # The algorithm is based on the following explanation:
     # For each cycle defined in the cycles.csv that matches in the name and leg, we rescale the size and add the results
-    # to angles_corrected_sum. At the end, this array will be divided to the number of cycles.
-    angles_corrected_sum = np.zeros((101, 12))  # 101 frame and 4 joints with 3 angles for each of them
-    counter = 0
+    # to angles_corrected array. After processing all the trials, this array will be reshaped to a 3d array.
+    angles_corrected = np.zeros((1, 12))  # 101 frame and 4 joints with 3 angles for each of them
     for i in ['Right', 'Left']:
         for k in range(len(cycles)):
             if cycles.loc[k, 'name'] == name and cycles.loc[k, 'leg'] == i:
                 columns = [c for c in angles.columns if i[0] in c]
                 temp = angles.loc[cycles.loc[k, 'start']:cycles.loc[k, 'stop'], columns]
 
-                angles_corrected_sum += scale_size(temp.to_numpy(), 101)
-                counter += 1
+                temp_scaled = scale_size(temp.to_numpy(), 101)
+                angles_corrected = np.concatenate((angles_corrected, temp_scaled), axis=0)
 
-    angles_corrected_average = angles_corrected_sum
-
+    angles_corrected = np.delete(angles_corrected, 0, axis=0)
     # Create columns of all the angles and joints in order to convert the angles_corrected_average to DataFrame
     C = [c[1:] for c in columns]
-    angles_corrected_average = pd.DataFrame(angles_corrected_average, columns=C)
 
-    return angles_corrected_average, counter
+    return angles_corrected, C
 
 
 # Obtain average of joint angles during statics pose
 statics = static_mean()
 
+# Open cycles.csv file in order to compute the average of corrected values over all the cycles in the trial
+cycles_file_id = open('dataset/cycles.csv')
+cycles = pd.read_csv(cycles_file_id)
+
 # The final goal is to compute the average of corrections on all the trials and cycles
-# Therefore, corrections_average is created to add the results of each trial to it and compute the average based on that
-# Also, the following loop will open every gaitn.csv file and compute the average of corrections on that trial
-corrections_average = np.zeros((101, 12))  # 101 frame and 4 joints with 3 angles for each of them
-counter = 0  # Counting the trials
+# The following loop will open every gaitn.csv file and process each gait trial and extract the cycles contained in that
+corrected_cycles = np.zeros((1, 12))
 for k in files_angles:
     # Obtain name of the file
     name = k[0:5]
@@ -327,16 +327,39 @@ for k in files_angles:
     angles_corrected_DF = pd.DataFrame(angles_corrected)
     angles_corrected_DF.to_csv(f"dataset/{name}_corrected.csv", index=False)
 
-    # Open cycles.csv file in order to compute the average of corrected values over all the cycles in the trial
-    cycles_file_id = open('dataset/cycles.csv')
-    cycles = pd.read_csv(cycles_file_id)
-
     # Calculate average corrected values for the trial
-    trial_average, cycles_count = cycles_average(angles_corrected_DF, cycles, name)
+    trial_cycles, columns = cycles_average(angles_corrected_DF, cycles, name)
 
-    # Add the trial_average to corrections_average
-    corrections_average += trial_average
-    counter += cycles_count
+    # Add results of the trial to corrected_cycles
+    corrected_cycles = np.concatenate((corrected_cycles, trial_cycles), axis=0)
 
-corrections_average /= counter
-corrections_average.to_csv('dataset/corrections_average.csv', index=False)
+# Delete the first row of the corrected_cycles and reshape the result to a 3d array
+corrected_cycles = np.delete(corrected_cycles, 0, axis=0).reshape((-1, 101, 12))
+
+# Get the mean and std values of all the cycles
+corrected_cycles_average = corrected_cycles.mean(axis=0)
+corrected_cycles_std = np.std(corrected_cycles, axis=0)
+
+corrected_angles_average = pd.DataFrame(corrected_cycles_average, columns=columns)
+corrected_angles_std = pd.DataFrame(corrected_cycles_std, columns=columns)
+
+joint_angles_average = pd.read_csv('dataset/joint_angles_average.csv')
+# Plot the results of joint_angles_average and corrected_anlges_average to see the correction results
+for joint in joints:
+    for coordinate in ['X', 'Y', 'Z']:
+        plt.plot(corrected_angles_average[joint+'Angles_'+coordinate], color='green', label='Corrected')
+        n1 = corrected_angles_average[joint + 'Angles_' + coordinate] - corrected_angles_std[joint + 'Angles_' + coordinate]
+        p1 = corrected_angles_average[joint + 'Angles_' + coordinate] + corrected_angles_std[joint + 'Angles_' + coordinate]
+        plt.fill_between(range(len(corrected_angles_average[joint+'Angles_'+coordinate])), n1, p1, color='green', alpha=0.2)
+
+        plt.plot(joint_angles_average[joint+'Angles_'+coordinate], color='blue', label='Normal')
+        n2 = joint_angles_average[joint+'Angles_'+coordinate] - joint_angles_average[joint+'Angles_std_'+coordinate]
+        p2 = joint_angles_average[joint + 'Angles_' + coordinate] + joint_angles_average[joint + 'Angles_std_'+coordinate]
+        plt.fill_between(range(len(joint_angles_average[joint+'Angles_'+coordinate])), n2, p2, color='blue', alpha=0.2)
+
+        plt.title(joint + ' Angle ' + coordinate)
+        plt.xlabel('Time (frame)')
+        plt.ylabel('Joint angle (degree)')
+        plt.xlim(0, 100)
+        plt.legend()
+        plt.show()
