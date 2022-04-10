@@ -362,4 +362,5 @@ for joint in joints:
         plt.ylabel('Joint angle (degree)')
         plt.xlim(0, 100)
         plt.legend()
+        plt.savefig(f'Plots/{joint}_Angle_{coordinate}.jpg')
         plt.show()
